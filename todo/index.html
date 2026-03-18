@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>할일 관리</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; }
+    header { background: #4f46e5; color: white; padding: 16px 24px; display: flex; align-items: center; gap: 12px; }
+    header h1 { font-size: 1.4rem; }
+    .stats { margin-left: auto; font-size: 0.85rem; opacity: 0.85; }
+    .container { max-width: 700px; margin: 24px auto; padding: 0 16px; }
+    .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; box-shadow: 0 1px 6px rgba(0,0,0,.08); }
+    .form-grid { display: grid; gap: 10px; }
+    input, textarea, select { width: 100%; padding: 9px 12px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 0.95rem; }
+    textarea { resize: vertical; min-height: 60px; }
+    .row { display: flex; gap: 10px; }
+    .row > * { flex: 1; }
+    button.add-btn { background: #4f46e5; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 0.95rem; width: 100%; margin-top: 4px; }
+    button.add-btn:hover { background: #4338ca; }
+    .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+    .filter-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid #d1d5db; background: white; cursor: pointer; font-size: 0.85rem; }
+    .filter-btn.active { background: #4f46e5; color: white; border-color: #4f46e5; }
+    .todo-item { display: flex; align-items: flex-start; gap: 12px; padding: 14px 0; border-bottom: 1px solid #f3f4f6; }
+    .todo-item:last-child { border-bottom: none; }
+    .todo-item input[type=checkbox] { width: 18px; height: 18px; margin-top: 2px; cursor: pointer; accent-color: #4f46e5; }
+    .todo-body { flex: 1; }
+    .todo-title { font-size: 0.97rem; font-weight: 500; }
+    .todo-title.done { text-decoration: line-through; color: #9ca3af; }
+    .todo-meta { font-size: 0.78rem; color: #6b7280; margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; }
+    .badge { padding: 2px 8px; border-radius: 10px; font-size: 0.75rem; font-weight: 600; }
+    .badge.high { background: #fee2e2; color: #dc2626; }
+    .badge.medium { background: #fef3c7; color: #d97706; }
+    .badge.low { background: #dcfce7; color: #16a34a; }
+    .del-btn { background: none; border: none; color: #ef4444; cursor: pointer; font-size: 1.1rem; padding: 2px 6px; border-radius: 6px; }
+    .del-btn:hover { background: #fee2e2; }
+    .empty { text-align: center; color: #9ca3af; padding: 32px 0; font-size: 0.95rem; }
+  </style>
+</head>
+<body>
+<header>
+  <span style="font-size:1.5rem">✅</span>
+  <h1>할일 관리</h1>
+  <div class="stats" id="stats"></div>
+</header>
+
+<div class="container">
+  <!-- 추가 폼 -->
+  <div class="card">
+    <div class="form-grid">
+      <input id="title" type="text" placeholder="할일 제목 *" />
+      <textarea id="memo" placeholder="메모 (선택)"></textarea>
+      <div class="row">
+        <input id="due_date" type="date" />
+        <select id="priority">
+          <option value="medium">보통 우선순위</option>
+          <option value="high">높은 우선순위</option>
+          <option value="low">낮은 우선순위</option>
+        </select>
+      </div>
+      <button class="add-btn" onclick="addTodo()">+ 할일 추가</button>
+    </div>
+  </div>
+
+  <!-- 필터 -->
+  <div class="filters">
+    <button class="filter-btn active" data-f="" onclick="setFilter(this,'')">전체</button>
+    <button class="filter-btn" data-f="pending" onclick="setFilter(this,'pending')">진행중</button>
+    <button class="filter-btn" data-f="completed" onclick="setFilter(this,'completed')">완료</button>
+    <button class="filter-btn" data-f="priority=high" onclick="setFilter(this,'priority=high')">🔴 높음</button>
+    <button class="filter-btn" data-f="priority=medium" onclick="setFilter(this,'priority=medium')">🟡 보통</button>
+    <button class="filter-btn" data-f="priority=low" onclick="setFilter(this,'priority=low')">🟢 낮음</button>
+  </div>
+
+  <!-- 목록 -->
+  <div class="card" id="list-card">
+    <div id="todo-list"><div class="empty">할일을 추가해 보세요!</div></div>
+  </div>
+</div>
+
+<script>
+  const API = 'http://localhost:5001/api';
+  let currentFilter = '';
+
+  async function loadTodos() {
+    const q = currentFilter.includes('=')
+      ? currentFilter
+      : (currentFilter ? `status=${currentFilter}` : '');
+    const res = await fetch(`${API}/todos${q ? '?' + q : ''}`);
+    const data = await res.json();
+    render(data.todos || []);
+    loadStats();
+  }
+
+  async function loadStats() {
+    const res = await fetch(`${API}/health`);
+    const d = await res.json();
+    document.getElementById('stats').textContent =
+      `전체 ${d.total_todos} · 진행중 ${d.pending} · 완료 ${d.completed}`;
+  }
+
+  function render(todos) {
+    const el = document.getElementById('todo-list');
+    if (!todos.length) { el.innerHTML = '<div class="empty">할일이 없습니다.</div>'; return; }
+    el.innerHTML = todos.map(t => `
+      <div class="todo-item">
+        <input type="checkbox" ${t.completed ? 'checked' : ''} onchange="toggle('${t.id}', this.checked)" />
+        <div class="todo-body">
+          <div class="todo-title ${t.completed ? 'done' : ''}">${esc(t.title)}</div>
+          <div class="todo-meta">
+            <span class="badge ${t.priority}">${{high:'높음',medium:'보통',low:'낮음'}[t.priority]}</span>
+            ${t.due_date ? `<span>📅 ${t.due_date}</span>` : ''}
+            ${t.memo ? `<span>📝 ${esc(t.memo)}</span>` : ''}
+          </div>
+        </div>
+        <button class="del-btn" onclick="deleteTodo('${t.id}')">🗑</button>
+      </div>`).join('');
+  }
+
+  async function addTodo() {
+    const title = document.getElementById('title').value.trim();
+    if (!title) { alert('제목을 입력해주세요'); return; }
+    await fetch(`${API}/todos`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        title,
+        memo: document.getElementById('memo').value,
+        due_date: document.getElementById('due_date').value,
+        priority: document.getElementById('priority').value
+      })
+    });
+    document.getElementById('title').value = '';
+    document.getElementById('memo').value = '';
+    document.getElementById('due_date').value = '';
+    document.getElementById('priority').value = 'medium';
+    loadTodos();
+  }
+
+  async function toggle(id, completed) {
+    await fetch(`${API}/todos/${id}`, {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({completed})
+    });
+    loadTodos();
+  }
+
+  async function deleteTodo(id) {
+    if (!confirm('삭제할까요?')) return;
+    await fetch(`${API}/todos/${id}`, {method: 'DELETE'});
+    loadTodos();
+  }
+
+  function setFilter(btn, f) {
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentFilter = f;
+    loadTodos();
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  document.getElementById('title').addEventListener('keydown', e => {
+    if (e.key === 'Enter') addTodo();
+  });
+
+  loadTodos();
+</script>
+</body>
+</html>
