@@ -1,0 +1,9 @@
+{
+  "name": "calendar-todo",
+  "version": "1.0.0",
+  "description": "Claude Code용 캘린더 및 할일 관리 플러그인. 일정과 태스크를 AI로 직접 관리합니다.",
+  "author": {
+    "name": "student"
+  },
+  "keywords": ["calendar", "todo", "productivity", "mcp"]
+}

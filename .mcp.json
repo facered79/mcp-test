@@ -2,11 +2,11 @@
   "mcpServers": {
     "calendar": {
       "command": "python",
-      "args": ["C:/Users/student/Documents/mcp_test/calendar/mcp_server.py"]
+      "args": ["${CLAUDE_PLUGIN_ROOT}/calendar/mcp_server.py"]
     },
     "todo": {
       "command": "python",
-      "args": ["C:/Users/student/Documents/mcp_test/todo/mcp_server.py"]
+      "args": ["${CLAUDE_PLUGIN_ROOT}/todo/mcp_server.py"]
     }
   }
 }
