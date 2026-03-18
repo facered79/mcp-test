@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "calendar": {
+      "command": "python",
+      "args": ["C:/Users/student/Documents/mcp_test/calendar/mcp_server.py"]
+    },
+    "todo": {
+      "command": "python",
+      "args": ["C:/Users/student/Documents/mcp_test/todo/mcp_server.py"]
+    }
+  }
+}
